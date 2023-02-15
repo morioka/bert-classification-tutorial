@@ -18,7 +18,13 @@ pandas = "^1.5.2"
 more-itertools = "^9.0.0"
 scikit-learn = "^1.2.0"
 scipy = "^1.10.0"
+fugashi = {extras = ["unidic-lite"], version = "^1.2.0"}
+ipadic = "^1.0.0"
+joblib = "^1.2.0"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.21.1"
 
 [build-system]
 requires = ["poetry-core"]
