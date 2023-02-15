@@ -17,6 +17,7 @@ from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 
 import src.utils as utils
 
+import numpy as np
 
 @classopt(default_long=True)
 class Args:
@@ -24,7 +25,7 @@ class Args:
     dataset_dir: Path = "./datasets/rcqa"
 
     batch_size: int = 16
-    epochs: int = 20
+    epochs: int = 2
     lr: float = 2e-5
     num_warmup_epochs: int = 2
     max_seq_len: int = 512
@@ -32,6 +33,9 @@ class Args:
     date = datetime.now().strftime("%Y-%m-%d/%H-%M-%S")
     device: str = "cuda:0"
     seed: int = 42
+
+    output_gold_and_pred = False
+    save_best_model = False
 
     def __post_init__(self):
         utils.set_seed(self.seed)
@@ -83,19 +87,19 @@ def main(args: Args):
         labels = torch.LongTensor([d["score"] for d in data_list])
         return BatchEncoding({**inputs, "labels": labels})
 
-    def create_loader(dataset, batch_size=None, shuffle=False):
+    def create_loader(dataset, batch_size=None, shuffle=False, num_workers=4):
         return DataLoader(
             dataset,
             collate_fn=collate_fn,
             batch_size=batch_size or args.batch_size,
             shuffle=shuffle,
-            num_workers=4,
+            num_workers=num_workers,
             pin_memory=True,
         )
 
     train_dataloader: DataLoader = create_loader(train_dataset, shuffle=True)
     val_dataloader: DataLoader = create_loader(val_dataset, shuffle=False)
-    test_dataloader: DataLoader = create_loader(test_dataset, shuffle=False)
+    test_dataloader: DataLoader = create_loader(test_dataset, shuffle=False, n_workers=1)
 
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr)
 
@@ -121,6 +125,10 @@ def main(args: Args):
 
             gold_labels += batch.labels.tolist()
             pred_labels += out.logits.argmax(dim=-1).tolist()
+
+        if args.output_gold_and_pred:
+            np.savetxt(args.output_dir / 'gold_labels', np.array(gold_labels))
+            np.savetxt(args.output_dir / 'pred_labels', np.array(pred_labels))
 
         accuracy: float = accuracy_score(gold_labels, pred_labels)
         precision, recall, f1, _ = precision_recall_fscore_support(
@@ -190,6 +198,12 @@ def main(args: Args):
     test_metrics = evaluate(test_dataloader)
     utils.save_json(test_metrics, args.output_dir / "test-metrics.json")
     utils.save_config(args, args.output_dir / "config.json")
+
+    utils.save_config(args, args.output_dir / "config.json")
+
+    if args.save_best_model:
+        (args.output_dir / "best_f1_model").mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(args.output_dir / "best_f1_model") 
 
 
 if __name__ == "__main__":
