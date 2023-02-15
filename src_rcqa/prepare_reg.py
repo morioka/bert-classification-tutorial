@@ -114,7 +114,7 @@ def main(args: Args):
         passage_data = [ passage[idx: idx + n] for idx in range(0,len(passage), n)]
         passage_emb = np.vstack([model.encode(data, batch_size=batch_size).cpu().detach().numpy() for data in tqdm(passage_data)])
 
-        joblib.dump(passage_data, args.output_dir / f"{name}_passage_emb.npy.pickle", compress=3)
+        joblib.dump(passage_emb, args.output_dir / f"{name}_passage_emb.npy.pickle", compress=3)
         del passage_data, passage_emb
 
         score = np.expand_dims(score.astype('float32'), axis=1)
