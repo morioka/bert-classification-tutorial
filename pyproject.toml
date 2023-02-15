@@ -4,7 +4,9 @@ version = "0.1.0"
 description = ""
 authors = ["hppRC <hpp.ricecake@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "src" }]
+packages = [{ include = "src" },
+            { include = "src_rcqa" },
+]
 
 [tool.poetry.dependencies]
 python = "3.10.x"
@@ -21,7 +23,7 @@ scipy = "^1.10.0"
 fugashi = {extras = ["unidic-lite"], version = "^1.2.0"}
 ipadic = "^1.0.0"
 joblib = "^1.2.0"
-
+lightgbm = "^3.3.5"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.21.1"
