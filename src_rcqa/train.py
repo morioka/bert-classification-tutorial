@@ -21,7 +21,7 @@ import src.utils as utils
 @classopt(default_long=True)
 class Args:
     model_name: str = "cl-tohoku/bert-base-japanese-v2"
-    dataset_dir: Path = "./datasets/livedoor"
+    dataset_dir: Path = "./datasets/rcqa"
 
     batch_size: int = 16
     epochs: int = 20
@@ -38,6 +38,7 @@ class Args:
 
         self.label2id: dict[str, int] = utils.load_json(self.dataset_dir / "label2id.json")
         self.labels: list[int] = list(self.label2id.values())
+#        self.labels: list[int] = [0, 1, 2, 3, 4, 5]
 
         model_name = self.model_name.replace("/", "__")
         self.output_dir = Path("outputs") / model_name / self.date
@@ -67,8 +68,8 @@ def main(args: Args):
     test_dataset: list[dict] = load_dataset(args.dataset_dir / "test.jsonl")
 
     def collate_fn(data_list: list[dict]) -> BatchEncoding:
-        title = [d["title"] for d in data_list]
-        body = [d["body"] for d in data_list]
+        title = [d["answer"] + " : " + d["question"] for d in data_list]
+        body = [d["text"] for d in data_list]
 
         inputs: BatchEncoding = tokenizer(
             title,
@@ -79,7 +80,7 @@ def main(args: Args):
             max_length=args.max_seq_len,
         )
 
-        labels = torch.LongTensor([d["label"] for d in data_list])
+        labels = torch.LongTensor([d["score"] for d in data_list])
         return BatchEncoding({**inputs, "labels": labels})
 
     def create_loader(dataset, batch_size=None, shuffle=False):

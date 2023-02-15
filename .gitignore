@@ -2,6 +2,7 @@
 /data
 /datasets
 /outputs
+/data_rcqa
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

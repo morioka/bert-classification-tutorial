@@ -8,11 +8,13 @@ from tqdm import tqdm
 
 import src.utils as utils
 
+import pandas as pd
+
 
 @classopt(default_long=True)
 class Args:
-    input_dir: Path = "./data/text"
-    output_dir: Path = "./datasets/livedoor"
+    input_dir: Path = "./data_rcqa"
+    output_dir: Path = "./datasets/rcqa"
     seed: int = 42
 
 
@@ -35,52 +37,57 @@ def process_body(body: list[str]) -> str:
 def main(args: Args):
     random.seed(args.seed)
 
-    data = []
     labels = set()
 
-    for path in tqdm(list(args.input_dir.glob("*/*.txt"))):
-        if path.name == "LICENSE.txt":
-            continue
-        category = path.parent.name
-        labels.add(category)
+    df = pd.read_json(args.input_dir / 'all-v1.0.json', orient='records', lines=True)
+    # データフォーマット
+    # qid: int
+    # competotion: str
+    # timestamp: timestamp
+    # format: str 
+    # question: str 
+    # answer: str 
+    # documents: list
+    #   title: text
+    #   text: text
+    #   score: int
 
-        # データフォーマット
-        # １行目：記事のURL
-        # ２行目：記事の日付
-        # ３行目：記事のタイトル
-        # ４行目以降：記事の本文
-        lines = path.read_text().splitlines()
 
-        data.append(
-            {
-                "category": category,
-                "category-id": path.stem,
-                "url": lines[0].strip(),
-                "date": lines[1].strip(),
-                "title": process_title(lines[2].strip()),
-                "body": process_body(lines[3:]),
-            }
-        )
-    random.shuffle(data)
-
-    label2id = {label: i for i, label in enumerate(sorted(labels))}
-    data = [
-        {
-            "id": idx,
-            "label": label2id[d["category"]],
-            **d,
-        }
-        for idx, d in enumerate(data)
-    ]
-
-    utils.save_jsonl(data, args.output_dir / "all.jsonl")
-    utils.save_json(label2id, args.output_dir / "label2id.json")
-
-    portions = list(divide(10, data))
+    portions = list(divide(10, df.iterrows()))
     train, val, test = list(flatten(portions[:-2])), portions[-2], portions[-1]
-    utils.save_jsonl(train, args.output_dir / "train.jsonl")
-    utils.save_jsonl(val, args.output_dir / "val.jsonl")
-    utils.save_jsonl(test, args.output_dir / "test.jsonl")
+    # qidごとにtrain/val/test分割する
+    # documentsまで展開しては分割しない
+
+    for n, d in zip(['train','val','test'], [train,val, test]):
+        data = []
+        for i, record in d:
+            a = record.copy()
+            a.pop('documents')
+            for j, k in enumerate(record['documents']):
+                data.append({
+                    **a,
+                    **k,
+                    "did": j+1  # (qid, did) で一意性を担保
+                })
+
+        random.shuffle(data)
+        data = pd.DataFrame(data)
+
+        data.text = data.text.apply(process_title)
+        data.title = data.title.apply(process_title)
+        data.question = data.question.apply(process_title)
+        data.answer = data.answer.apply(process_title)
+
+        data.timestamp = data.timestamp.apply(lambda x: f'{x}'.split(' ')[0])
+
+        data.to_json(args.output_dir / f"{n}.jsonl", orient='records', force_ascii=False, lines=True)
+
+        for i in data.score.unique():
+            labels.add(i)
+
+    label2id = {f"{label}": i for i, label in enumerate(sorted(labels))}
+
+    utils.save_json(label2id, args.output_dir / "label2id.json")
 
 
 if __name__ == "__main__":
