@@ -59,6 +59,8 @@ def main(args: Args):
     # documentsまで展開しては分割しない
 
     for n, d in zip(['train','val','test'], [train,val, test]):
+        print(f'processing .. {n}')
+
         data = []
         for i, record in d:
             a = record.copy()
@@ -70,7 +72,6 @@ def main(args: Args):
                     "did": j+1  # (qid, did) で一意性を担保
                 })
 
-        random.shuffle(data)
         data = pd.DataFrame(data)
 
         data.text = data.text.apply(process_title)
