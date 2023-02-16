@@ -25,7 +25,7 @@ class Args:
     dataset_dir: Path = "./datasets/rcqa"
 
     batch_size: int = 16
-    epochs: int = 2
+    epochs: int = 20
     lr: float = 2e-5
     num_warmup_epochs: int = 2
     max_seq_len: int = 512
@@ -34,8 +34,8 @@ class Args:
     device: str = "cuda:0"
     seed: int = 42
 
-    output_gold_and_pred = False
-    save_best_model = False
+    output_gold_and_pred: bool = False
+    save_best_model: bool = False
 
     def __post_init__(self):
         utils.set_seed(self.seed)
@@ -99,7 +99,7 @@ def main(args: Args):
 
     train_dataloader: DataLoader = create_loader(train_dataset, shuffle=True)
     val_dataloader: DataLoader = create_loader(val_dataset, shuffle=False)
-    test_dataloader: DataLoader = create_loader(test_dataset, shuffle=False, n_workers=1)
+    test_dataloader: DataLoader = create_loader(test_dataset, shuffle=False, num_workers=1)
 
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr)
 
@@ -127,8 +127,8 @@ def main(args: Args):
             pred_labels += out.logits.argmax(dim=-1).tolist()
 
         if args.output_gold_and_pred:
-            np.savetxt(args.output_dir / 'gold_labels', np.array(gold_labels))
-            np.savetxt(args.output_dir / 'pred_labels', np.array(pred_labels))
+            np.savetxt(args.output_dir / 'gold_labels', np.array(gold_labels, dtype='int32'))
+            np.savetxt(args.output_dir / 'pred_labels', np.array(pred_labels, dtype='int32'))
 
         accuracy: float = accuracy_score(gold_labels, pred_labels)
         precision, recall, f1, _ = precision_recall_fscore_support(
